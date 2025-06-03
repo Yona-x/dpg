@@ -1,47 +1,71 @@
 <script lang="ts">
-  import svelteLogo from './assets/svelte.svg'
-  import viteLogo from '/vite.svg'
-  import Counter from './lib/Counter.svelte'
+  import { onMount } from "svelte";
+  import { fetchPosts } from "./lib/api";
+  import PostList from "./components/PostList.svelte";
+  import {
+    postsStore,
+    isCache,
+    saveLocalStorage,
+    loadLocalStorage,
+  } from "./stores/store";
+  import Spinner from "./components/ui/Spinner.svelte";
+  import type { Post } from "./types/componentsTypes";
+
+  let errorMessage: string = "";
+  let isLoad: boolean = false;
+
+  onMount(async () => {
+    isLoad = true;
+
+    const posts: Post[] = await fetchPosts();
+
+    if (posts) {
+      postsStore.set(posts);
+
+      saveLocalStorage(posts);
+    } else {
+      const cached = loadLocalStorage();
+
+      if (cached) {
+        postsStore.set(cached);
+        isCache.set(true);
+
+        errorMessage = "Данные загружены из кеша";
+      } else {
+        errorMessage = "Нет данных для отображения";
+      }
+    }
+    console.log(errorMessage);
+
+    isLoad = false;
+  });
 </script>
 
-<main>
-  <div>
-    <a href="https://vite.dev" target="_blank" rel="noreferrer">
-      <img src={viteLogo} class="logo" alt="Vite Logo" />
-    </a>
-    <a href="https://svelte.dev" target="_blank" rel="noreferrer">
-      <img src={svelteLogo} class="logo svelte" alt="Svelte Logo" />
-    </a>
+{#if isLoad}
+  <div class="spinner_wrapper">
+    <Spinner styles="width: 30px; height: 30px;" />
+    <span>Загрузка постов...</span>
   </div>
-  <h1>Vite + Svelte</h1>
-
-  <div class="card">
-    <Counter />
-  </div>
-
-  <p>
-    Check out <a href="https://github.com/sveltejs/kit#readme" target="_blank" rel="noreferrer">SvelteKit</a>, the official Svelte app framework powered by Vite!
-  </p>
-
-  <p class="read-the-docs">
-    Click on the Vite and Svelte logos to learn more
-  </p>
-</main>
+{:else if errorMessage}
+  <p class="error_message">{errorMessage}</p>
+{:else}
+  <PostList />
+{/if}
 
 <style>
-  .logo {
-    height: 6em;
-    padding: 1.5em;
-    will-change: filter;
-    transition: filter 300ms;
+  .spinner_wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 2rem;
+    font-size: 1.2rem;
+    color: #141414;
   }
-  .logo:hover {
-    filter: drop-shadow(0 0 2em #646cffaa);
-  }
-  .logo.svelte:hover {
-    filter: drop-shadow(0 0 2em #ff3e00aa);
-  }
-  .read-the-docs {
-    color: #888;
+
+  .error_message {
+    color: red;
+    text-align: center;
+    margin-top: 100px;
+    font-size: 1.2rem;
   }
 </style>
